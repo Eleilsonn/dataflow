@@ -1,0 +1,13 @@
+version: '3.8'
+
+services:
+    dataflow:
+        build: .
+        container_name: dataflow
+        restart: always
+        ports:
+            - 5000:5000
+        volumes:
+            - ./src:/app/src
+        env_file:
+            - ./.env
