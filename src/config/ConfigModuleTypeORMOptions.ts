@@ -3,7 +3,9 @@ import { TypeOrmModuleOptions } from '@nestjs/typeorm';
 
 
 const options: TypeOrmModuleOptions = {
-    ...databaseConfig
+    ...databaseConfig,
+    autoLoadEntities: true,
+    migrations: []
 }
 
 export default options;

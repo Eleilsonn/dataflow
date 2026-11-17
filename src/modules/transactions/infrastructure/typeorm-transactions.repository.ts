@@ -1,0 +1,23 @@
+import { InjectRepository } from "@nestjs/typeorm";
+import { TransactionEntity } from "./transction.entity.js";
+import { Repository } from "typeorm";
+import { TransactionRepository } from "../interfaces/TransactionRepository.js";
+import { TransactionDTO } from "../dto/transaction.dto.js";
+
+export class TypeOrmTransactionsRepository implements TransactionRepository {
+    constructor(
+        @InjectRepository(TransactionEntity)
+        private readonly repository: Repository<TransactionEntity>
+    ) { }
+
+    async createMany(data: Array<TransactionDTO>): Promise<void> {
+
+        const transactions = await data.map(item => this.repository.create(item));
+
+        await this.repository.createQueryBuilder()
+            .insert()
+            .values(transactions)
+            .orIgnore()
+            .execute();
+    }
+}

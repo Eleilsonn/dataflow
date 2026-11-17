@@ -4,8 +4,11 @@ import { AppController } from './app.controller.js';
 import { UsersModule } from '@/modules/users/users.module.js';
 import { ConfigModule } from '@nestjs/config'
 import { TypeOrmModule } from '@nestjs/typeorm';
+import { AuthModule } from './modules/auth/auth.module.js';
 import ConfigModuleTypeORMOption from '@/config/ConfigModuleTypeORMOptions.js';
 import ConfigModuleOptions from '@/config/ConfigModuleOptions.js';
+import { AuthController } from './modules/auth/auth.controller.js';
+import { TransactionsModule } from './modules/transactions/transactions.module.js';
 
 export const { ObserveModule, ObserveInstrument } = createObserveModule();
 
@@ -21,7 +24,11 @@ export const { ObserveModule, ObserveInstrument } = createObserveModule();
     ConfigModule.forRoot(ConfigModuleOptions),
     TypeOrmModule.forRoot(ConfigModuleTypeORMOption),
     UsersModule,
+    AuthModule,
+    TransactionsModule,
   ],
-  controllers: [AppController],
+  controllers: [
+    AppController
+  ],
 })
 export class AppModule { }

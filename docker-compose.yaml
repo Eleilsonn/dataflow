@@ -4,10 +4,15 @@ services:
     dataflow:
         build: .
         container_name: dataflow
-        restart: always
+        # restart: unless-stopped
         ports:
             - 5000:5000
         volumes:
             - ./src:/app/src
+            - ./tmp:/app/tmp
         env_file:
             - ./.env
+        environment:
+            - DATABASE_HOST=host.docker.internal
+        extra_hosts:
+            - "host.docker.internal:host-gateway"

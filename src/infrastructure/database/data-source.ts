@@ -13,6 +13,7 @@ export const databaseConfig: DataSourceOptions = {
     password: env.DATABASE_PASSWORD,
     entities: EntityList,
     migrations: ['src/infrastructure/database/migrations/*.ts',],
+    migrationsRun: false,
     synchronize: false,
     connectTimeoutMS: timeoutSeconds * 1000
 }

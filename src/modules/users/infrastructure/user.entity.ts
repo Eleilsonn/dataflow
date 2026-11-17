@@ -1,8 +1,9 @@
-import { Column, Entity, PrimaryColumn } from "typeorm";
+import { IsOptional } from "class-validator";
+import { Column, Entity, IsNull, PrimaryColumn, PrimaryGeneratedColumn } from "typeorm";
 
 @Entity('users')
 export class UserEntity {
-    @PrimaryColumn('uuid')
+    @PrimaryGeneratedColumn('uuid')
     id: string;
 
     @Column({ type: 'varchar', length: 250 })
@@ -17,9 +18,14 @@ export class UserEntity {
     @Column({ type: 'timestamp', default: () => 'CURRENT_TIMESTAMP' })
     created_at: Date;
 
-    @Column({ type: 'timestamp' })
-    deleted_at: Date;
+    @Column({ type: 'boolean', default: false })
+    deleted: boolean;
 
-    @Column({ type: 'varchar' })
-    deleted_by: string;
+    @Column({ type: 'timestamp', nullable: true })
+    @IsOptional()
+    deleted_at: Date | null;
+
+    @Column({ type: 'varchar', nullable: true })
+    @IsOptional()
+    deleted_by: string | null;
 }
