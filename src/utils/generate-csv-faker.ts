@@ -2,6 +2,7 @@ import { faker } from '@faker-js/faker';
 import { createWriteStream } from 'node:fs';
 import { once } from 'node:events';
 import path from 'node:path';
+import { uuidv4 } from 'zod';
 
 const TOTAL_RECORDS = 1_000_000;
 
@@ -55,4 +56,51 @@ async function generateCSV() {
     console.log(`${TOTAL_RECORDS} registros gerados`);
 }
 
-generateCSV().catch(console.error);
+export async function generateInvalidCSV(header: string[], total_records: number, importID: string) {
+    const filename = `${importID}-faker-test.csv`;
+    const filePath = path.resolve(import.meta.dirname, '..', '..', 'tmp', filename);
+    const stream = createWriteStream(filePath);
+
+    stream.write(header.join(',') + '\n');
+
+    // Gera 10 contas para simular múltiplas transações por conta
+    const accounts = Array.from(
+        { length: 10 },
+        () => faker.string.uuid(),
+    );
+
+    for (let i = 0; i < total_records; i++) {
+        const row = [];
+
+        if (header.includes('transaction_id'))
+            row.push(faker.string.uuid())
+        if (header.includes('account_id'))
+            row.push(faker.helpers.arrayElement(accounts))
+        if (header.includes('amount'))
+            row.push(faker.finance.amount({ min: 10, max: 10000, dec: 2 }))
+        if (header.includes('currency'))
+            row.push('BRL')
+        if (header.includes('transaction_type'))
+            row.push(faker.helpers.arrayElement(['credit', 'debit']))
+        if (header.includes('status'))
+            row.push(faker.helpers.arrayElement(['completed', 'pending', 'failed']))
+        if (header.includes('created_at'))
+            row.push(faker.date.recent({ days: 365 }).toISOString())
+        if (header.includes('description'))
+            row.push(`Transaction ${i + 1}`)
+
+        const line = row.join(',') + '\n';
+
+        if (!stream.write(line)) {
+            await once(stream, 'drain');
+        }
+    }
+
+    stream.end();
+
+    await once(stream, 'finish');
+
+    return filename;
+}
+
+// generateCSV().catch(console.error);

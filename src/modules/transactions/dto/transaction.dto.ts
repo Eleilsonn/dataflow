@@ -1,4 +1,4 @@
-import { IsDate, IsEnum, IsOptional, IsUUID, Min } from "class-validator";
+import { IsDate, IsEnum, IsOptional, isUUID, IsUUID, Min } from "class-validator";
 import { CurrencyAcceptedTransaction, StatusTransaction } from "../infrastructure/transction.entity.js";
 
 export class TransactionDTO {
@@ -25,5 +25,8 @@ export class TransactionDTO {
     created_at: Date;
 
     @IsOptional()
-    description: string
+    description: string;
+
+    @IsUUID()
+    import_id: string;
 }

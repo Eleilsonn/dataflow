@@ -11,7 +11,9 @@ const envSchema = z.object({
     DATABASE_USER: z.string(),
     DATABASE_PASSWORD: z.string(),
     DATABASE_NAME: z.string(),
-    PRIVATE_JWT: z.string()
+    PRIVATE_JWT: z.string(),
+    REDIS_HOST: z.string(),
+    REDIS_PORT: z.coerce.number()
 })
 
 const _env = envSchema.safeParse(process.env);

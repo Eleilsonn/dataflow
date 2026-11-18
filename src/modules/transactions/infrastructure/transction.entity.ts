@@ -43,4 +43,10 @@ export class TransactionEntity {
 
     @Column({ type: 'text', nullable: true })
     description: string
+
+    @Column({ type: 'varchar', length: 50 })
+    import_id: string;
+
+    @Column({ type: 'timestamp', default: () => 'CURRENT_TIMESTAMP' })
+    imported_at: Date;
 }

@@ -1,7 +1,7 @@
 import { InjectRepository } from "@nestjs/typeorm";
 import { TransactionEntity } from "./transction.entity.js";
 import { Repository } from "typeorm";
-import { TransactionRepository } from "../interfaces/TransactionRepository.js";
+import { TransactionRepository } from "../interfaces/transaction-repository.js";
 import { TransactionDTO } from "../dto/transaction.dto.js";
 
 export class TypeOrmTransactionsRepository implements TransactionRepository {

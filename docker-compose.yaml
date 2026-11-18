@@ -12,7 +12,9 @@ services:
             - ./tmp:/app/tmp
         env_file:
             - ./.env
-        environment:
-            - DATABASE_HOST=host.docker.internal
-        extra_hosts:
-            - "host.docker.internal:host-gateway"
+        # environment:
+        #     - DATABASE_HOST=host.docker.internal
+        #     - REDIS_HOST=host.docker.internal
+        # extra_hosts:
+        #     - "host.docker.internal:host-gateway"
+        network_mode: host

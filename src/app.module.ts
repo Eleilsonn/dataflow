@@ -5,24 +5,22 @@ import { UsersModule } from '@/modules/users/users.module.js';
 import { ConfigModule } from '@nestjs/config'
 import { TypeOrmModule } from '@nestjs/typeorm';
 import { AuthModule } from './modules/auth/auth.module.js';
-import ConfigModuleTypeORMOption from '@/config/ConfigModuleTypeORMOptions.js';
-import ConfigModuleOptions from '@/config/ConfigModuleOptions.js';
-import { AuthController } from './modules/auth/auth.controller.js';
+import ConfigModuleTypeORMOption from '@/config/module-typeORM-options.config.js';
+import ConfigModuleOptions from '@/config/module-options.config.js';
+import ConfigModuleWinston from '@/config/module-winston.config.js';
+import ConfigModuleBullMQ from '@/config/module-bullmq.config.js';
 import { TransactionsModule } from './modules/transactions/transactions.module.js';
+import { WinstonModule } from 'nest-winston';
+import { BullModule } from '@nestjs/bullmq';
 
 export const { ObserveModule, ObserveInstrument } = createObserveModule();
 
 @Module({
   imports: [
-    // Distributed tracing, auto-correlated logs, request/job metrics, error
-    // telemetry, alarms, and more — out of the box. Sign up at https://observe.nestjs.com
-    // ObserveModule.forRoot({
-    //   appKey: 'YOUR_APP_KEY',
-    //   appSecret: 'YOUR_APP_SECRET',
-    //   serviceId: 'dataflow',
-    // }),
     ConfigModule.forRoot(ConfigModuleOptions),
     TypeOrmModule.forRoot(ConfigModuleTypeORMOption),
+    WinstonModule.forRoot(ConfigModuleWinston),
+    BullModule.forRoot(ConfigModuleBullMQ),
     UsersModule,
     AuthModule,
     TransactionsModule,
