@@ -15,9 +15,9 @@ export class LoginUseCase {
 
     }
     async execute(data: LoginDTO) {
-        console.log(data.email)
+
         const userFound = await this.userRepository.findByEmail(data.email);
-        console.log({ userFound })
+
         if (!userFound)
             throw new UnauthorizedException('Nenhum usuário encontrado com este e-mail');
 

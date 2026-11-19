@@ -1,7 +1,7 @@
 import { Test, TestingModule } from '@nestjs/testing';
 import { AuthController } from './auth.controller.js';
 import { getRepositoryToken } from '@nestjs/typeorm';
-import { UserEntity } from '../users/infrastructure/user.entity.js';
+import { UserEntity } from '../users/infrastructure/entities/user.entity.js';
 import { LoginUseCase } from './use-cases/login.use-case.js';
 
 describe('AuthController', () => {

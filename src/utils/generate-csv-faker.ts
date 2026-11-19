@@ -4,7 +4,7 @@ import { once } from 'node:events';
 import path from 'node:path';
 import { uuidv4 } from 'zod';
 
-const TOTAL_RECORDS = 1_000_000;
+const TOTAL_RECORDS = 100000;
 
 const headers = [
     'transaction_id',
@@ -19,7 +19,7 @@ const headers = [
 
 async function generateCSV() {
 
-    const filePath = path.resolve(import.meta.dirname, '..', '..', 'tmp', 'transactions-faker.csv');
+    const filePath = path.resolve(import.meta.dirname, '..', '..', 'tmp', 'transactions-faker-100k.csv');
     const stream = createWriteStream(filePath);
 
     stream.write(headers.join(',') + '\n');
@@ -111,4 +111,4 @@ export async function generateInvalidCSV(header: string[], total_records: number
     return filename;
 }
 
-// generateCSV().catch(console.error);
+generateCSV().catch(console.error);

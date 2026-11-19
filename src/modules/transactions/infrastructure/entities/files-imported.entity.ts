@@ -1,4 +1,4 @@
-import { UserEntity } from "../../../modules/users/infrastructure/user.entity.js";
+import { UserEntity } from "../../../users/infrastructure/entities/user.entity.js";
 import { Column, Entity, JoinColumn, ManyToOne, PrimaryGeneratedColumn } from "typeorm";
 import type { Relation } from "typeorm";
 

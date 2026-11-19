@@ -1,8 +1,8 @@
 import { Injectable } from "@nestjs/common";
-import { CreateImportHistoryDTO } from "../dto/create-import-history.dto.js";
-import { ImportHistoryRepository, IUpdateImportHistory } from "../interfaces/import-history.repository.js";
+import { CreateImportHistoryDTO } from "../../dto/create-import-history.dto.js";
+import { ImportHistoryRepository, IUpdateImportHistory } from "../../interfaces/import-history.repository.js";
 import { InjectRepository } from "@nestjs/typeorm";
-import { ImportHistoryEntity } from "./files-imported.entity.js";
+import { ImportHistoryEntity } from "../entities/files-imported.entity.js";
 import { Repository } from "typeorm";
 
 @Injectable()

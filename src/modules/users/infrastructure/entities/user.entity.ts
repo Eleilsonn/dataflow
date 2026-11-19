@@ -1,4 +1,4 @@
-import { ImportHistoryEntity } from "../../../modules/transactions/infrastructure/files-imported.entity.js";
+import { ImportHistoryEntity } from "../../../transactions/infrastructure/entities/files-imported.entity.js";
 import { IsOptional } from "class-validator";
 import { Column, Entity, IsNull, OneToMany, PrimaryColumn, PrimaryGeneratedColumn } from "typeorm";
 import type { Relation } from "typeorm";

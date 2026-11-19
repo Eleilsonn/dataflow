@@ -1,10 +1,10 @@
 import { Module } from '@nestjs/common';
 import { AuthController } from './auth.controller.js';
 import { TypeOrmModule } from '@nestjs/typeorm';
-import { UserEntity } from '../users/infrastructure/user.entity.js';
+import { UserEntity } from '../users/infrastructure/entities/user.entity.js';
 import { LoginUseCase } from './use-cases/login.use-case.js';
 import { UserRepository } from '../users/interfaces/user-repository.interface.js';
-import { TypeOrmUserRepository } from '../users/infrastructure/typeorm-user.repository.js';
+import { TypeOrmUserRepository } from '@/modules/users/infrastructure/repositories/typeorm-user.repository.js';
 
 @Module({
   controllers: [AuthController],

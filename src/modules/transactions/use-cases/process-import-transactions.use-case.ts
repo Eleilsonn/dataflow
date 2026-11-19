@@ -1,7 +1,7 @@
 import { parse } from 'csv-parse';
 import { folderPathSpreadsheet } from '../domain/constants/folder-spreadsheet-imported.js';
-import { CurrencyAcceptedTransaction, TransactionEntity } from '../infrastructure/transction.entity.js';
-import fs, { createReadStream } from 'fs';
+import { CurrencyAcceptedTransaction, TransactionEntity } from '../infrastructure/entities/transction.entity.js';
+import fs, { createReadStream, statSync } from 'fs';
 import { HEADER_ACCEPTED } from '../domain/constants/headers-accepteds-on-file-import.constants.js';
 import { validate } from 'class-validator';
 import { TransactionDTO } from '../dto/transaction.dto.js';
@@ -9,7 +9,8 @@ import { Inject, Injectable, Logger } from '@nestjs/common';
 import { TransactionRepository } from '../interfaces/transaction-repository.js';
 import { WINSTON_MODULE_NEST_PROVIDER } from 'nest-winston';
 import { ImportHistoryRepository, IUpdateImportHistory } from '../interfaces/import-history.repository.js';
-import { StatusImport } from '../infrastructure/files-imported.entity.js';
+import { StatusImport } from '../infrastructure/entities/files-imported.entity.js';
+import { Job } from 'bullmq';
 
 
 
@@ -17,6 +18,21 @@ type TypeParameters = {
     bank: string;
     filename: string;
     importID: string;
+    userID: string;
+    job: Job
+}
+
+type TypeParamsPublisherProgress = {
+    importID: string;
+    countSaved: number;
+    countDuplicate: number;
+    bytesSizeFile: number;
+    bytesRead: number;
+    status: string;
+    job: Job;
+    userID: string;
+    startAt?: Date;
+    finishAt?: Date;
 }
 
 @Injectable()
@@ -30,7 +46,7 @@ export class ProcessImportTransactionsUseCase {
         private readonly logger: Logger
     ) { }
 
-    async execute({ bank, filename, importID }: TypeParameters) {
+    async execute({ bank, filename, importID, job, userID }: TypeParameters) {
         return new Promise(async (resolve, reject) => {
 
             const filePath = `${folderPathSpreadsheet}/${filename}`;
@@ -42,21 +58,41 @@ export class ProcessImportTransactionsUseCase {
             const recordsNonStandart: Array<{ transaction: TransactionDTO, contentsError: string[], positionLine: number }> = [];
             let columnsNonStandart: string[] | undefined;
 
+
             let countRowByBatch = 0;
             let countRow = 0;
+            // let countSaved = 0;
+            // let countDuplicate = 0;
+            // let bytesRead = 0;
+
             let messageErrorValidRow: string | undefined;
             let headerIsValid = false;
             let headerOnSpreadsheet: Array<string> = [];
             let batchSize = 2000;
+            const fileSize = statSync(filePath).size;
+
+            const optionsPublish: TypeParamsPublisherProgress = {
+                importID,
+                countSaved: 0,
+                countDuplicate: 0,
+                bytesSizeFile: fileSize,
+                bytesRead: 0,
+                status: 'PROCESSING',
+                job,
+                userID,
+                startAt: new Date()
+            }
 
             stream.pipe(parser);
 
-            await this.alterImportHistory(importID, { status: StatusImport.PROCESSING, start: new Date() })
+            await this.alterImportHistory(importID, { status: StatusImport.PROCESSING, start: new Date() });
+            this.publisherProgress(optionsPublish);
 
             parser.on('readable', async () => {
                 let recordStrem = parser.read();
                 try {
                     while (recordStrem !== null) {
+                        optionsPublish.bytesRead = stream.bytesRead;
 
                         if (countRowByBatch == 0 && !headerIsValid) {
                             parser.pause();
@@ -90,7 +126,11 @@ export class ProcessImportTransactionsUseCase {
                                 if (countRowByBatch == batchSize) {
                                     parser.pause();
 
-                                    await this.persistData(records, messageErrorValidRow);
+                                    const { count_saved } = await this.persistData(records, messageErrorValidRow);
+                                    optionsPublish.countSaved += count_saved;
+                                    optionsPublish.countDuplicate += records.length - count_saved;
+
+                                    this.publisherProgress(optionsPublish);
 
                                     records = [];
                                     countRowByBatch = 0;
@@ -114,15 +154,27 @@ export class ProcessImportTransactionsUseCase {
                 });
 
                 await this.transactionRepository.deleteByImportID(importID);
+                optionsPublish.status = 'ERROR';
+                optionsPublish.finishAt = new Date();
+                this.publisherProgress(optionsPublish);
                 reject(err);
             }).on('end', async () => {
                 try {
-                    await this.persistData(records, messageErrorValidRow);
+                    const { count_saved } = await this.persistData(records, messageErrorValidRow);
+                    optionsPublish.countSaved += count_saved;
+                    optionsPublish.countDuplicate += records.length - count_saved;
+
                     await this.alterImportHistory(importID, {
                         status: StatusImport.CONCLUDED,
                         finish: new Date(),
                         count_records: countRow
                     });
+                    if (records.length > 0) {
+                        optionsPublish.status = 'CONCLUDED';
+                        optionsPublish.finishAt = new Date();
+
+                        this.publisherProgress(optionsPublish);
+                    }
 
                     records = [];
                     fs.unlinkSync(filePath);
@@ -138,6 +190,9 @@ export class ProcessImportTransactionsUseCase {
                     });
 
                     await this.transactionRepository.deleteByImportID(importID);
+
+                    optionsPublish.status = 'ERROR';
+                    this.publisherProgress(optionsPublish);
                     reject(error)
                 }
             })
@@ -196,11 +251,29 @@ export class ProcessImportTransactionsUseCase {
         if (Boolean(messageErrorValidRow))
             throw new Error(messageErrorValidRow)
 
-        if (records.length > 0)
-            await this.transactionRepository.createMany(records);
+        if (records.length > 0) {
+            const { count_saved } = await this.transactionRepository.createMany(records);
+            return { count_saved };
+        }
+
+        return { count_saved: 0 };
     }
 
     private async alterImportHistory(importID: string, data: IUpdateImportHistory) {
         await this.importHistoryRepository.updateByImportID(importID, data);
+    }
+
+    private async publisherProgress(options: TypeParamsPublisherProgress) {
+        const progressPercent = Number(((options.bytesRead * 100) / options.bytesSizeFile).toFixed(2));
+        options.job.updateProgress({
+            importID: options.importID,
+            status: options.status,
+            progress_percent: progressPercent,
+            countSaved: options.countSaved,
+            countDuplicate: options.countDuplicate,
+            userID: options.userID,
+            startAt: options.startAt,
+            finishAt: options.finishAt
+        });
     }
 }

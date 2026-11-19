@@ -10,12 +10,14 @@ export class ImportTransactionsWorker extends WorkerHost {
         super()
     }
     async process(job: Job, token?: string): Promise<void> {
-        const { importID, extension, bank } = job.data;
+        const { importID, extension, bank, userID } = job.data;
         const filename = `${importID}.${extension}`;
         await this.processImportTransactionsUseCase.execute({
             filename,
             bank,
-            importID
+            importID,
+            job,
+            userID
         });
     }
 

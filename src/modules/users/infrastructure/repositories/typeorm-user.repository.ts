@@ -1,7 +1,6 @@
 import { InjectRepository } from "@nestjs/typeorm";
-import { CreateUserDTO } from "../dto/create-user.dto.js";
-import { ICreateUserData, IResultFindByEmailUserRepository, UserRepository } from "../interfaces/user-repository.interface.js";
-import { UserEntity } from "./user.entity.js";
+import { ICreateUserData, IResultFindByEmailUserRepository, UserRepository } from "../../interfaces/user-repository.interface.js";
+import { UserEntity } from "../entities/user.entity.js";
 import { Repository } from "typeorm";
 
 export class TypeOrmUserRepository implements UserRepository {

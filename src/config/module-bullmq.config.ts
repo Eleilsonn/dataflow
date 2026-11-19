@@ -7,7 +7,7 @@ export const options: BullRootModuleOptions = {
         port: env.REDIS_PORT
     },
 }
-console.log(env.REDIS_HOST)
+
 export const queueImportTransactionRegister = BullModule.registerQueue({
     name: 'import-transactions'
 })

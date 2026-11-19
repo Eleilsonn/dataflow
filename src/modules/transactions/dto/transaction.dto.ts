@@ -1,5 +1,5 @@
 import { IsDate, IsEnum, IsOptional, isUUID, IsUUID, Min } from "class-validator";
-import { CurrencyAcceptedTransaction, StatusTransaction } from "../infrastructure/transction.entity.js";
+import { CurrencyAcceptedTransaction, StatusTransaction } from "../infrastructure/entities/transction.entity.js";
 
 export class TransactionDTO {
     bank: string;

@@ -3,8 +3,8 @@ import { Inject, Injectable } from "@nestjs/common";
 import { TransactionImportQueue } from "../interfaces/transaction-import.queue.js";
 import { ImportHistoryRepository } from "../interfaces/import-history.repository.js";
 import { CreateImportHistoryDTO } from "../dto/create-import-history.dto.js";
-import { StatusImport } from "../infrastructure/files-imported.entity.js";
-import { UserEntity } from "@/modules/users/infrastructure/user.entity.js";
+import { StatusImport } from "../infrastructure/entities/files-imported.entity.js";
+import { UserEntity } from "@/modules/users/infrastructure/entities/user.entity.js";
 
 type TypeData = {
     importID: string;
@@ -38,6 +38,6 @@ export class CreateImportUseCase {
         }
 
         await this.importHistoryRepository.create(createData);
-        await this.transactionImportQueue.enqueue(importID, bank, extension);
+        await this.transactionImportQueue.enqueue(importID, bank, extension, data.userID);
     }
 }

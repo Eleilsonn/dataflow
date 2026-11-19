@@ -1,5 +1,5 @@
 import { CreateImportHistoryDTO } from "../dto/create-import-history.dto.js";
-import { ImportHistoryEntity, StatusImport } from "../infrastructure/files-imported.entity.js";
+import { ImportHistoryEntity, StatusImport } from "../infrastructure/entities/files-imported.entity.js";
 
 export interface IUpdateImportHistory {
     status?: StatusImport;

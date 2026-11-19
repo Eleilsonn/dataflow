@@ -1,5 +1,5 @@
 import { Injectable } from "@nestjs/common";
-import { TransactionImportQueue } from "../interfaces/transaction-import.queue.js";
+import { TransactionImportQueue } from "../../interfaces/transaction-import.queue.js";
 import { InjectQueue } from "@nestjs/bullmq";
 import { Queue } from "bullmq";
 
@@ -10,9 +10,9 @@ export class TransactionQueueuProducer implements TransactionImportQueue {
         private readonly queue: Queue
     ) { }
 
-    async enqueue(importID: string, bank: string, extension: string): Promise<void> {
+    async enqueue(importID: string, bank: string, extension: string, userID: string): Promise<void> {
         this.queue.add('import-transactions',
-            { importID, bank, extension },
+            { importID, bank, extension, userID },
             {
                 jobId: importID,
                 attempts: 1,

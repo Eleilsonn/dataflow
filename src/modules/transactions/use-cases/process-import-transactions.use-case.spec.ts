@@ -7,13 +7,15 @@ import { Test, TestingModule } from "@nestjs/testing";
 import { WINSTON_MODULE_NEST_PROVIDER } from "nest-winston";
 import fs from 'fs';
 import { ImportHistoryRepository, IUpdateImportHistory } from "../interfaces/import-history.repository.js";
-import { StatusImport } from "../infrastructure/files-imported.entity.js";
+import { StatusImport } from "../infrastructure/entities/files-imported.entity.js";
+import { Job } from "bullmq";
 
 describe('ProcessImportTransactionsUseCase', () => {
     let useCase: ProcessImportTransactionsUseCase;
     let insertedBatches: string[][] = [];
     let importIDDeleted: string[] = [];
-    let statusAltered: StatusImport[] = []
+    let statusAltered: StatusImport[] = [];
+    let userID: string = 'teste-id'
 
     const repositoryMock = {
         createMany: vi.fn().mockImplementation(async (batch) => {
@@ -29,6 +31,10 @@ describe('ProcessImportTransactionsUseCase', () => {
         updateByImportID: vi.fn().mockImplementation((importID: string, data: IUpdateImportHistory) => {
             statusAltered.push(data.status!);
         }),
+    }
+
+    const job = {
+        updateProgress: vi.fn()
     }
 
     const serviceLogger = {
@@ -79,7 +85,7 @@ describe('ProcessImportTransactionsUseCase', () => {
         const filename = await generateCSV.generateInvalidCSV(headerInvalid, totalRecords, importID);
 
         await expect(
-            useCase.execute({ filename, bank: 'teste', importID })
+            useCase.execute({ filename, bank: 'teste', importID, job: (job as any) as Job, userID })
         ).rejects.toThrow('O csv está com o head fora do padrão esperado')
             .finally(() => {
                 const folderFile = `./tmp/${filename}`;
@@ -107,7 +113,7 @@ describe('ProcessImportTransactionsUseCase', () => {
         const filename = await generateCSV.generateInvalidCSV(headerInvalid, totalRecords, importID, columnsWithValueWrong);
 
         await expect(
-            useCase.execute({ filename, bank: 'teste', importID })
+            useCase.execute({ filename, bank: 'teste', importID, job: (job as any) as Job, userID })
         ).rejects.toThrow('Existem linhas que não seguem o padrão esperado')
             .finally(() => {
                 const folderFile = `./tmp/${filename}`;
@@ -133,7 +139,7 @@ describe('ProcessImportTransactionsUseCase', () => {
 
         const filename = await generateCSV.generateInvalidCSV(headerInvalid, totalRecords, importID);
 
-        await useCase.execute({ bank: 'teste', filename, importID })
+        await useCase.execute({ bank: 'teste', filename, importID, job: (job as any) as Job, userID })
             .finally(() => {
                 const folderFile = `./tmp/${filename}`;
                 if (fs.existsSync(folderFile))
@@ -165,7 +171,7 @@ describe('ProcessImportTransactionsUseCase', () => {
 
         const filename = await generateCSV.generateInvalidCSV(headerInvalid, totalRecords, importID, columnsWithValueWrong, quantRowWithValueWrong);
 
-        await useCase.execute({ bank: 'teste', filename, importID })
+        await useCase.execute({ bank: 'teste', filename, importID, job: (job as any) as Job, userID })
             .catch(err => { })
             .finally(() => {
                 const folderFile = `./tmp/${filename}`;
@@ -195,7 +201,7 @@ describe('ProcessImportTransactionsUseCase', () => {
 
         const filename = await generateCSV.generateInvalidCSV(headerInvalid, totalRecords, importID);
 
-        expect(useCase.execute({ bank: 'test', filename, importID }))
+        expect(useCase.execute({ bank: 'test', filename, importID, job: (job as any) as Job, userID }))
             .rejects.toThrow('Algumas colunas do header estão com a descrição diferente do esperado. (status_2 => status)')
             .finally(() => {
                 const folderFile = `./tmp/${filename}`;
@@ -221,7 +227,7 @@ describe('ProcessImportTransactionsUseCase', () => {
 
         const filename = await generateCSV.generateInvalidCSV(headerInvalid, totalRecords, importID);
 
-        await useCase.execute({ bank: 'teste', filename, importID })
+        await useCase.execute({ bank: 'teste', filename, importID, job: (job as any) as Job, userID })
             .finally(() => {
                 const folderFile = `./tmp/${filename}`;
                 if (fs.existsSync(folderFile))
