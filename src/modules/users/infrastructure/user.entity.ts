@@ -1,5 +1,7 @@
+import { ImportHistoryEntity } from "../../../modules/transactions/infrastructure/files-imported.entity.js";
 import { IsOptional } from "class-validator";
-import { Column, Entity, IsNull, PrimaryColumn, PrimaryGeneratedColumn } from "typeorm";
+import { Column, Entity, IsNull, OneToMany, PrimaryColumn, PrimaryGeneratedColumn } from "typeorm";
+import type { Relation } from "typeorm";
 
 @Entity('users')
 export class UserEntity {
@@ -28,4 +30,7 @@ export class UserEntity {
     @Column({ type: 'varchar', nullable: true })
     @IsOptional()
     deleted_by: string | null;
+
+    @OneToMany(() => ImportHistoryEntity, (importFile) => importFile.created_by)
+    imports: Relation<ImportHistoryEntity[]>
 }

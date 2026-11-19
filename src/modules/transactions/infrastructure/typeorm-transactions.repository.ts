@@ -10,6 +10,10 @@ export class TypeOrmTransactionsRepository implements TransactionRepository {
         private readonly repository: Repository<TransactionEntity>
     ) { }
 
+    async deleteByImportID(importID: string): Promise<void> {
+        await this.repository.delete({ import_id: importID });
+    }
+
     async createMany(data: Array<TransactionDTO>): Promise<void> {
 
         const transactions = await data.map(item => this.repository.create(item));

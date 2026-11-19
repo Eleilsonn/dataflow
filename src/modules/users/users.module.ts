@@ -5,6 +5,7 @@ import { UserEntity } from './infrastructure/user.entity.js';
 import { CreateUserUseCase } from './use-cases/create-user.use-case.js';
 import { TypeOrmUserRepository } from './infrastructure/typeorm-user.repository.js';
 import { UserRepository } from './interfaces/user-repository.interface.js';
+import { ImportHistoryEntity } from '../transactions/infrastructure/files-imported.entity.js';
 
 @Module({
   controllers: [UsersController],

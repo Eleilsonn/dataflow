@@ -7,9 +7,9 @@ import { validate } from 'class-validator';
 import { TransactionDTO } from '../dto/transaction.dto.js';
 import { Inject, Injectable, Logger } from '@nestjs/common';
 import { TransactionRepository } from '../interfaces/transaction-repository.js';
-import { CheckMetrics } from '@/utils/check-metrics.js';
 import { WINSTON_MODULE_NEST_PROVIDER } from 'nest-winston';
-import { tryCatch } from 'bullmq';
+import { ImportHistoryRepository, IUpdateImportHistory } from '../interfaces/import-history.repository.js';
+import { StatusImport } from '../infrastructure/files-imported.entity.js';
 
 
 
@@ -24,12 +24,14 @@ export class ProcessImportTransactionsUseCase {
     constructor(
         @Inject(TransactionRepository)
         private readonly transactionRepository: TransactionRepository,
+        @Inject(ImportHistoryRepository)
+        private readonly importHistoryRepository: ImportHistoryRepository,
         @Inject(WINSTON_MODULE_NEST_PROVIDER)
         private readonly logger: Logger
     ) { }
 
     async execute({ bank, filename, importID }: TypeParameters) {
-        return new Promise((resolve, reject) => {
+        return new Promise(async (resolve, reject) => {
 
             const filePath = `${folderPathSpreadsheet}/${filename}`;
             const stream = createReadStream(filePath);
@@ -37,58 +39,66 @@ export class ProcessImportTransactionsUseCase {
             const parser = parse({ delimiter: ',' });
 
             let records: Array<TransactionDTO> = [];
-            const recordsNonStandart: Array<{ transaction: TransactionDTO, contentsError: string[] }> = [];
+            const recordsNonStandart: Array<{ transaction: TransactionDTO, contentsError: string[], positionLine: number }> = [];
+            let columnsNonStandart: string[] | undefined;
 
+            let countRowByBatch = 0;
             let countRow = 0;
-            let messageValidSpreadsheet: string | undefined;
+            let messageErrorValidRow: string | undefined;
             let headerIsValid = false;
             let headerOnSpreadsheet: Array<string> = [];
             let batchSize = 2000;
 
             stream.pipe(parser);
 
-            // console.log('starting', filename, new Date().toISOString());
+            await this.alterImportHistory(importID, { status: StatusImport.PROCESSING, start: new Date() })
 
             parser.on('readable', async () => {
                 let recordStrem = parser.read();
                 try {
                     while (recordStrem !== null) {
 
-                        if (countRow == 0 && !headerIsValid) {
+                        if (countRowByBatch == 0 && !headerIsValid) {
                             parser.pause();
 
                             headerOnSpreadsheet = recordStrem;
+
                             const checkHeader = this.validHead(headerOnSpreadsheet);
 
                             headerIsValid = checkHeader.isValid;
 
                             if (!checkHeader.isValid) {
+                                columnsNonStandart = checkHeader.nonStandartColumn;
                                 throw new Error(checkHeader.message);
                             } else
                                 parser.resume();
                         } else {
                             const transactionPrepared = await this.convertArrayLineToTransactionEntity(recordStrem, bank, importID);
                             if (transactionPrepared.error) {
-                                recordsNonStandart.push({ transaction: transactionPrepared.transaction, contentsError: transactionPrepared.contentsError });
-                                if (!messageValidSpreadsheet)
-                                    messageValidSpreadsheet = 'Existe linhas que não seguem o padrão esperado';
+                                recordsNonStandart.push({
+                                    transaction: transactionPrepared.transaction,
+                                    contentsError: transactionPrepared.contentsError,
+                                    positionLine: countRow
+                                });
+
+                                if (!messageErrorValidRow)
+                                    messageErrorValidRow = 'Existem linhas que não seguem o padrão esperado';
 
                             } else {
                                 records.push(transactionPrepared.transaction as TransactionEntity);
-                                countRow++;
-                                if (countRow == batchSize) {
+                                countRowByBatch++;
+                                if (countRowByBatch == batchSize) {
                                     parser.pause();
 
-                                    if (Boolean(messageValidSpreadsheet))
-                                        throw new Error(messageValidSpreadsheet)
-
-                                    await this.transactionRepository.createMany(records);
+                                    await this.persistData(records, messageErrorValidRow);
 
                                     records = [];
-                                    countRow = 0;
+                                    countRowByBatch = 0;
                                     parser.resume();
                                 }
                             }
+
+                            countRow++;
                         }
 
                         recordStrem = parser.read();
@@ -96,16 +106,41 @@ export class ProcessImportTransactionsUseCase {
                 } catch (error: unknown) {
                     parser.destroy(error as Error)
                 }
-            }).on('error', (err) => {
+            }).on('error', async (err) => {
+                await this.alterImportHistory(importID, {
+                    status: StatusImport.ERROR,
+                    reason_error: err.message,
+                    divergent_columns: columnsNonStandart
+                });
+
+                await this.transactionRepository.deleteByImportID(importID);
                 reject(err);
             }).on('end', async () => {
-                await this.transactionRepository.createMany(records);
+                try {
+                    await this.persistData(records, messageErrorValidRow);
+                    await this.alterImportHistory(importID, {
+                        status: StatusImport.CONCLUDED,
+                        finish: new Date(),
+                        count_records: countRow
+                    });
 
-                records = [];
-                fs.unlinkSync(filePath);
-            });
-            // if (Boolean(messageValidSpreadsheet))
-            //     throw new BadRequestException(messageValidSpreadsheet);
+                    records = [];
+                    fs.unlinkSync(filePath);
+
+                    resolve(true);
+                } catch (error: unknown) {
+                    const lines = recordsNonStandart.map(item => item.positionLine.toString())
+
+                    await this.alterImportHistory(importID, {
+                        status: StatusImport.ERROR,
+                        reason_error: (error as Error).message,
+                        divergent_columns: lines.length > 0 ? lines : undefined
+                    });
+
+                    await this.transactionRepository.deleteByImportID(importID);
+                    reject(error)
+                }
+            })
         })
     }
 
@@ -122,20 +157,18 @@ export class ProcessImportTransactionsUseCase {
             };
         }
 
-        const headIsValid = headSpreadsheet.map((value, indice) => {
+        headSpreadsheet.map((value, indice) => {
             const check = value === headerAccepted[indice];
             if (!check)
-                return nonStandartColumn.push(`${value} => ${headerAccepted[indice]}`)
+                nonStandartColumn.push(`${value} => ${headerAccepted[indice]}`)
+        });
 
-            return null;
-        }).filter(Boolean);
-
-        if (headIsValid.length > 0) {
+        if (nonStandartColumn.length > 0) {
             isValid = false;
             message = `Algumas colunas do header estão com a descrição diferente do esperado. (${nonStandartColumn.join(' | ')})`
         }
 
-        return { isValid, message }
+        return { isValid, message, nonStandartColumn }
     }
 
     private async convertArrayLineToTransactionEntity(line: string[], bank: string, importID: string) {
@@ -159,4 +192,15 @@ export class ProcessImportTransactionsUseCase {
         return { error: validation.length > 0, transaction, contentsError }
     }
 
+    private async persistData(records: Array<TransactionDTO>, messageErrorValidRow?: string) {
+        if (Boolean(messageErrorValidRow))
+            throw new Error(messageErrorValidRow)
+
+        if (records.length > 0)
+            await this.transactionRepository.createMany(records);
+    }
+
+    private async alterImportHistory(importID: string, data: IUpdateImportHistory) {
+        await this.importHistoryRepository.updateByImportID(importID, data);
+    }
 }

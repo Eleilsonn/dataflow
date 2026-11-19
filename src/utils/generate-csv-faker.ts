@@ -56,7 +56,7 @@ async function generateCSV() {
     console.log(`${TOTAL_RECORDS} registros gerados`);
 }
 
-export async function generateInvalidCSV(header: string[], total_records: number, importID: string) {
+export async function generateInvalidCSV(header: string[], total_records: number, importID: string, columnWithValueWrong?: string, quantColumnWithWrong?: number) {
     const filename = `${importID}-faker-test.csv`;
     const filePath = path.resolve(import.meta.dirname, '..', '..', 'tmp', filename);
     const stream = createWriteStream(filePath);
@@ -68,7 +68,7 @@ export async function generateInvalidCSV(header: string[], total_records: number
         { length: 10 },
         () => faker.string.uuid(),
     );
-
+    let countColumnWithWrong = 0;
     for (let i = 0; i < total_records; i++) {
         const row = [];
 
@@ -82,12 +82,19 @@ export async function generateInvalidCSV(header: string[], total_records: number
             row.push('BRL')
         if (header.includes('transaction_type'))
             row.push(faker.helpers.arrayElement(['credit', 'debit']))
-        if (header.includes('status'))
+        if (header.includes('status') || header.includes('status_2'))
             row.push(faker.helpers.arrayElement(['completed', 'pending', 'failed']))
         if (header.includes('created_at'))
             row.push(faker.date.recent({ days: 365 }).toISOString())
         if (header.includes('description'))
             row.push(`Transaction ${i + 1}`)
+
+        if (columnWithValueWrong && (typeof quantColumnWithWrong === 'undefined' || countColumnWithWrong < quantColumnWithWrong)) {
+            const indexRow = header.indexOf(columnWithValueWrong);
+
+            row[indexRow] = faker.string.nanoid(8);
+            countColumnWithWrong++;
+        }
 
         const line = row.join(',') + '\n';
 
@@ -95,6 +102,7 @@ export async function generateInvalidCSV(header: string[], total_records: number
             await once(stream, 'drain');
         }
     }
+
 
     stream.end();
 

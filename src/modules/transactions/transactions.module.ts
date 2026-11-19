@@ -11,11 +11,15 @@ import { TransactionQueueuProducer } from './infrastructure/transaction-queue.pr
 import { queueImportTransactionRegister } from '@/config/module-bullmq.config.js';
 import { ImportTransactionsWorker } from './worker/import-transactions.worker.js';
 import { CreateImportUseCase } from './use-cases/create-import.use-case.js';
+import { ImportHistoryEntity } from './infrastructure/files-imported.entity.js';
+import { ImportHistoryRepository } from './interfaces/import-history.repository.js';
+import { TypeOrmImportHistoryRepository } from './infrastructure/typeorm-import-history.repository.js';
+import { UserEntity } from '../users/infrastructure/user.entity.js';
 
 @Module({
   controllers: [TransactionsController],
   imports: [
-    TypeOrmModule.forFeature([TransactionEntity]),
+    TypeOrmModule.forFeature([TransactionEntity, UserEntity, ImportHistoryEntity]),
     queueImportTransactionRegister
   ],
   providers: [
@@ -30,6 +34,10 @@ import { CreateImportUseCase } from './use-cases/create-import.use-case.js';
     {
       provide: TransactionImportQueue,
       useClass: TransactionQueueuProducer
+    },
+    {
+      provide: ImportHistoryRepository,
+      useClass: TypeOrmImportHistoryRepository
     }
   ]
 })
